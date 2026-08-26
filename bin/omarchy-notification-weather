@@ -1,0 +1,3 @@
+#!/bin/bash
+# User override: toggle our custom weather widget
+omarchy-shell shell toggle main.weather
