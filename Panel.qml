@@ -14,9 +14,6 @@ Panel {
   property var anchorItem: null
   property bool openedFromHotkey: false
 
-  // Exposed for the shell's isBarWidgetOpen check
-  readonly property bool opened: panel.open
-
   // The bar tracks the widget mounted in its slot — BarWidget.qml — not this
   // nested panel. Everything the bar identifies a panel by has to be that
   // widget: the popout coordinator (and with it the open-panel dot under the
@@ -650,7 +647,6 @@ Row {
           anchors.rightMargin: Style.space(24)
           anchors.verticalCenter: parent.verticalCenter
           spacing: Style.space(12)
-          Layout.maximumWidth: parent.width - heroRight.width - Style.space(40)
 
           Text {
             id: heroIcon
@@ -678,7 +674,7 @@ Row {
               font.pixelSize: 48
               font.bold: true
               elide: Text.ElideRight
-              maximumWidth: heroLeft.width - heroIcon.width - Style.space(24)
+              width: Math.min(implicitWidth, Math.max(0, heroLeft.width - heroIcon.width - Style.space(24)))
             }
             Text {
               text: root.current ? root.tempUnit : ""
@@ -693,7 +689,8 @@ Row {
 
         Column {
           id: heroRight
-          width: Math.max(weatherStats.implicitWidth, Style.space(200))
+          width: Math.min(Math.max(weatherStats.implicitWidth, Style.space(200)), parent.width * 0.5)
+          clip: true
           anchors.right: parent.right
           anchors.rightMargin: Style.space(20)
           anchors.verticalCenter: parent.verticalCenter
@@ -875,7 +872,7 @@ Row {
                 font.letterSpacing: 1
               }
               Text {
-                text: (root.aqiReport.current.grass_pollen || root.aqiReport.current.birch_pollen || root.aqiReport.current.ragweed_pollen) + " gr/m\u00b3"
+                text: root.aqiReport && root.aqiReport.current ? (root.aqiReport.current.grass_pollen || root.aqiReport.current.birch_pollen || root.aqiReport.current.ragweed_pollen) + " gr/m\u00b3" : "--"
                 color: root.bar.foreground
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.title
@@ -1211,12 +1208,12 @@ Row {
               Column {
                 spacing: Style.space(2)
                 Text { text: "SUNRISE"; color: Qt.darker(root.bar.foreground, 1.5); font.family: root.bar.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1 }
-                Text { text: Qt.formatDateTime(root.sunTimesData.rise, "h:mm A"); color: root.bar.foreground; font.family: root.bar.fontFamily; font.pixelSize: Style.font.body }
+                Text { text: root.sunTimesData ? Qt.formatDateTime(root.sunTimesData.rise, "h:mm A") : "--"; color: root.bar.foreground; font.family: root.bar.fontFamily; font.pixelSize: Style.font.body }
               }
               Column {
                 spacing: Style.space(2)
                 Text { text: "SUNSET"; color: Qt.darker(root.bar.foreground, 1.5); font.family: root.bar.fontFamily; font.pixelSize: Style.font.caption; font.letterSpacing: 1 }
-                Text { text: Qt.formatDateTime(root.sunTimesData.set, "h:mm A"); color: root.bar.foreground; font.family: root.bar.fontFamily; font.pixelSize: Style.font.body }
+                Text { text: root.sunTimesData ? Qt.formatDateTime(root.sunTimesData.set, "h:mm A") : "--"; color: root.bar.foreground; font.family: root.bar.fontFamily; font.pixelSize: Style.font.body }
               }
             }
           }
@@ -1285,7 +1282,7 @@ Row {
               }
               Text {
                 visible: root.moonData && (root.moonData.moonrise || root.moonData.moonset)
-                text: "rise " + (root.moonData.moonrise || "--") + " · set " + (root.moonData.moonset || "--")
+                text: root.moonData ? ("rise " + (root.moonData.moonrise || "--") + " · set " + (root.moonData.moonset || "--")) : ""
                 color: Qt.darker(root.bar.foreground, 1.6)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
