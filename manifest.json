@@ -3,8 +3,8 @@
   "id": "main.weather",
   "name": "My Weather",
   "version": "1.0.0",
-  "author": "Omarchy",
-  "description": "Weather pill with detail popup",
+  "author": "abhinavshashank",
+  "description": "Omarchy shell plugin: weather pill with detail popup — current conditions, hourly, forecast, AQI, sun/moon",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "My Weather",
-    "description": "Weather pill with detail popup",
+    "description": "Weather pill with detail popup — current conditions, hourly, forecast, AQI, sun/moon",
     "category": "Info",
     "allowMultiple": false,
     "settingsForm": "weatherSettings"

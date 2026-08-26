@@ -551,7 +551,7 @@ KeyboardPanel {
     open: root.opened
     centerOnBar: true
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(480))
+    contentWidth: panel.fittedContentWidth(Style.space(560))
     contentHeight: panel.fittedContentHeight(weatherColumn.implicitHeight)
 
     PanelKeyCatcher {
@@ -689,7 +689,7 @@ Row {
 
         Column {
           id: heroRight
-          width: Math.min(Math.max(weatherStats.implicitWidth, Style.space(200)), parent.width * 0.5)
+          width: Math.min(Math.max(weatherStats.implicitWidth, moonRow.implicitWidth + Style.space(150), Style.space(200)), parent.width * 0.62)
           clip: true
           anchors.right: parent.right
           anchors.rightMargin: Style.space(20)
@@ -1218,20 +1218,30 @@ Row {
             }
           }
 
-          // Right: moon graphic + phase + rise/set.
+          // Right: moon graphic + phase + rise/set. Sized by content so the
+          // rise/set line never clips; anchored right, left is the sun arc.
           Row {
-            width: parent.width * 0.45
+            id: moonRow
             height: parent.height
             anchors.right: parent.right
             spacing: Style.space(14)
 
             Canvas {
               id: moonCanvas
-              width: Style.space(52)
-              height: Style.space(52)
+              width: Style.space(64)
+              height: Style.space(64)
               antialiasing: true
+              anchors.bottom: parent.bottom
+              anchors.bottomMargin: 4
               property var m: root.moonData
               onMChanged: requestPaint()
+              Timer {
+                interval: 60000
+                running: true
+                repeat: true
+                triggeredOnStart: false
+                onTriggered: moonCanvas.requestPaint()
+              }
               onPaint: {
                 var ctx = getContext("2d")
                 ctx.clearRect(0, 0, width, height)
@@ -1245,29 +1255,69 @@ Row {
                 // Dark disc (shadow side).
                 ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fillStyle = Qt.rgba(1,1,1,0.12); ctx.fill()
 
-                // Lit region using two-arc terminator.
+                // Lit region: outer limb semicircle on the lit side, closed
+                // by an elliptical terminator. QML Canvas has no ellipse(),
+                // so the terminator is a unit arc drawn under a horizontal
+                // scale transform. The terminator bulges toward the dark
+                // side for gibbous (frac > 0.5) and toward the lit side for
+                // crescent (frac < 0.5), which anticlockwise = frac <= 0.5
+                // expresses for both waxing and waning.
                 var k = Math.cos(Math.PI * frac)  // -1..1
-                var rx = Math.abs(k) * r
+                var rx = Math.max(Math.abs(k) * r, 0.01)
                 ctx.beginPath()
                 if (waxing) {
                   ctx.arc(cx, cy, r, -Math.PI/2, Math.PI/2, false)
-                  ctx.ellipse(cx, cy, rx, r, 0, Math.PI/2, -Math.PI/2, frac <= 0.5)
+                  ctx.save()
+                  ctx.translate(cx, cy)
+                  ctx.scale(rx / r, 1)
+                  ctx.arc(0, 0, r, Math.PI/2, -Math.PI/2, frac <= 0.5)
+                  ctx.restore()
                 } else {
                   ctx.arc(cx, cy, r, Math.PI/2, 3*Math.PI/2, false)
-                  ctx.ellipse(cx, cy, rx, r, 0, -Math.PI/2, Math.PI/2, frac > 0.5)
+                  ctx.save()
+                  ctx.translate(cx, cy)
+                  ctx.scale(rx / r, 1)
+                  ctx.arc(0, 0, r, -Math.PI/2, Math.PI/2, frac <= 0.5)
+                  ctx.restore()
                 }
                 ctx.fillStyle = fg
                 ctx.fill()
 
                 // Thin limb outline.
                 ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.strokeStyle = Qt.rgba(1,1,1,0.3); ctx.lineWidth = 1; ctx.stroke()
+
+                // Horizon line with a dot marking how far the moon has
+                // travelled from moonrise (left) toward moonset (right),
+                // sharing the sun arc's horizon baseline. No dot while the
+                // moon is below the horizon.
+                var hy = height - 4
+                ctx.beginPath()
+                ctx.moveTo(2, hy)
+                ctx.lineTo(width - 2, hy)
+                ctx.strokeStyle = fg
+                ctx.globalAlpha = 0.25
+                ctx.lineWidth = 1
+                ctx.stroke()
+                ctx.globalAlpha = 1
+
+                var prog = Model.moonSkyProgress(m)
+                if (prog >= 0) {
+                  ctx.beginPath()
+                  ctx.arc(4 + prog * (width - 8), hy, 3.5, 0, Math.PI*2)
+                  ctx.fillStyle = String(Color.accent)
+                  ctx.fill()
+                }
               }
             }
 
             Column {
-              anchors.verticalCenter: parent.verticalCenter
+              anchors.bottom: parent.bottom
+              anchors.bottomMargin: 2
               spacing: Style.space(2)
+              width: Style.space(190)
               Text {
+                width: parent.width
+                elide: Text.ElideRight
                 text: root.moonData ? root.moonData.phase.toUpperCase() : ""
                 color: root.bar.foreground
                 font.family: root.bar.fontFamily
@@ -1275,12 +1325,16 @@ Row {
                 font.letterSpacing: 1
               }
               Text {
+                width: parent.width
+                elide: Text.ElideRight
                 text: root.moonData ? (root.moonData.illumination + "% \u25CF") : ""
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.bodySmall
               }
               Text {
+                width: parent.width
+                elide: Text.ElideRight
                 visible: root.moonData && (root.moonData.moonrise || root.moonData.moonset)
                 text: root.moonData ? ("rise " + (root.moonData.moonrise || "--") + " · set " + (root.moonData.moonset || "--")) : ""
                 color: Qt.darker(root.bar.foreground, 1.6)

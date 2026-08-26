@@ -220,6 +220,33 @@ function moonInfo(report) {
   }
 }
 
+// Fraction of the sky-crossing the moon has completed since moonrise, or -1
+// when it is below the horizon or the rise/set strings are missing or
+// unparsable. wttr times are "hh:mm AM/PM" wall-clock strings without a date,
+// so a moon that rises in the evening and sets past midnight is treated as
+// spanning midnight (set < rise means the crossing wraps).
+function moonSkyProgress(m) {
+  if (!m || !m.moonrise || !m.moonset) return -1
+  function parse(t) {
+    var mt = String(t).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i)
+    if (!mt) return NaN
+    var h = parseInt(mt[1], 10) % 12
+    if (mt[3] && mt[3].toUpperCase() === "PM") h += 12
+    return h * 60 + parseInt(mt[2], 10)
+  }
+  var rise = parse(m.moonrise)
+  var set = parse(m.moonset)
+  if (isNaN(rise) || isNaN(set)) return -1
+  var now = new Date()
+  var cur = now.getHours() * 60 + now.getMinutes()
+  var span = set - rise
+  if (span <= 0) span += 24 * 60
+  var offset = cur - rise
+  if (offset < 0) offset += 24 * 60
+  if (offset > span) return -1
+  return offset / span
+}
+
 // Wind direction in degrees (direction wind comes FROM), preferring
 // open-meteo's current block, falling back to wttr.
 function windDirection(report, dailyForecastReport) {
@@ -403,6 +430,7 @@ if (typeof module !== "undefined") {
     openMeteoForecastDays: openMeteoForecastDays,
     openMeteoHourlySeries: openMeteoHourlySeries,
     moonInfo: moonInfo,
+    moonSkyProgress: moonSkyProgress,
     windDirection: windDirection,
     sunTimes: sunTimes,
     aqiColor: aqiColor,
